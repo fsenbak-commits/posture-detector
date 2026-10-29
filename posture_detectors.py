@@ -27,6 +27,14 @@ def get_posture_ratio(results, frame):
 if __name__ == "__main__":
     print("Please maintain a good posture for 5 seconds to calibrate the system.")
     cap = cv2.VideoCapture(0)
+    countdown_start = time.time()
+    while time.time() - countdown_start < 3:
+        ret, frame = cap.read()
+        frame = cv2.flip(frame, 1)
+        seconds_left = 3 - int(time.time() - countdown_start)
+        cv2.putText(frame, str(seconds_left), (280, 240), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 255), 6)
+        cv2.imshow("Posture Detector - Calibration", frame)
+        cv2.waitKey(1)
     calibration_values = []
     callibration_start_time = time.time()
     
@@ -60,11 +68,13 @@ if __name__ == "__main__":
 
     
     slouch_threshold = baseline_ratio * 0.8  # 20% less than baseline ratio
+    recover_threshold = baseline_ratio * 0.88
     print("baseline ratio:", baseline_ratio)
     print("slouch threshold:", slouch_threshold)
 
     bad_posture_start_time = None
-    alert_triggered = False
+    last_alert_time = None
+    is_slouching = False
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -77,15 +87,27 @@ if __name__ == "__main__":
         if results.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             ratio = get_posture_ratio(results, frame)
-            if ratio < slouch_threshold and bad_posture_start_time is None:
+            if ratio <slouch_threshold:
+                is_slouching =  True
+            elif ratio > recover_threshold:
+                is_slouching = False
+            if is_slouching == True:
+                color = (0,0,255)
+            else:
+                color =(0,255,0)
+            cv2.putText(frame, f"ratio: {ratio:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            cv2.putText(frame, f"threshold: {slouch_threshold:.2f}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            cv2.putText(frame, f"recover: {recover_threshold:.2f}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            if is_slouching and bad_posture_start_time is None:
                 bad_posture_start_time = time.time()
-            elif ratio < slouch_threshold and bad_posture_start_time is not None:
-                if time.time() - bad_posture_start_time > 5 and not alert_triggered:
-                    subprocess.run(["osascript", "-e", 'display notification "You have been slouching — sit up straight!" with title "Posture Check"'])
-                    alert_triggered = True
+            elif is_slouching:
+                if time.time() - bad_posture_start_time > 5:
+                    if last_alert_time is None or time.time() - last_alert_time > 60:
+                        subprocess.run(["osascript", "-e", 'display notification "You have been slouching — sit up straight!" with title "Posture Check"'])
+                        last_alert_time = time.time()
             else:
                 bad_posture_start_time = None
-                alert_triggered = False
+                last_alert_time = None
 
                 
             
