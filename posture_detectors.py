@@ -3,6 +3,7 @@ import mediapipe as mp
 import time
 import subprocess
 
+
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -24,10 +25,11 @@ def get_posture_ratio(results, frame):
     return ratio
     
 if __name__ == "__main__":
+    print("Please maintain a good posture for 5 seconds to calibrate the system.")
     cap = cv2.VideoCapture(0)
     calibration_values = []
     callibration_start_time = time.time()
-    print("Please maintain a good posture for 5 seconds to calibrate the system.")
+    
 
     while time.time() - callibration_start_time < 5:
         ret, frame = cap.read()
@@ -47,13 +49,16 @@ if __name__ == "__main__":
         cv2.imshow("Posture Detector - Calibration", frame)
         cv2.waitKey(1)
 
-        if not calibration_values:
-            print("No posture data detected. Please ensure your camera is positioned correctly and try again.")
-            cap.release()
-            cv2.destroyAllWindows()
-            exit()
+    # moved out here — only checked ONCE, after all 5 seconds have passed
+    if not calibration_values:
+        print("No posture data detected. Please ensure your camera is positioned correctly and try again.")
+        cap.release()
+        cv2.destroyAllWindows()
+        exit()
 
-    baseline_ratio = sum(calibration_values) / len(calibration_values)  
+    baseline_ratio = sum(calibration_values) / len(calibration_values) 
+
+    
     slouch_threshold = baseline_ratio * 0.8  # 20% less than baseline ratio
     print("baseline ratio:", baseline_ratio)
     print("slouch threshold:", slouch_threshold)
