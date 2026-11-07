@@ -30,6 +30,8 @@ if __name__ == "__main__":
     countdown_start = time.time()
     while time.time() - countdown_start < 3:
         ret, frame = cap.read()
+        if not ret:
+            break
         frame = cv2.flip(frame, 1)
         seconds_left = 3 - int(time.time() - countdown_start)
         cv2.putText(frame, str(seconds_left), (280, 240), cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 255), 6)
